@@ -298,6 +298,12 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
 //   Ukázal jsem ti ho, protože ho uvidíš všude.
 
 
+
+
+
+
+
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 10 — čekání na odpověď (async / await)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -398,6 +404,58 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
 //   `vysledek` může být null. Řešení je v úkolu 11, bod 4 — přečti si ho.
 // • `predikujNaoko` musí vrátit objekt se VŠEMI položkami typu Odpoved, jinak
 //   si TypeScript postěžuje. Nepovinné (`dotazy_modelu?`) vynechat můžeš.
+
+
+  const pockej = (ms: number) => new Promise((hotovo) => setTimeout(hotovo, ms))
+
+  async function predikujNaoko() : Promise<Odpoved> {
+    await pockej (2000)
+    return {
+      rezim: 'prosty_rag',
+      predikce: 'up' ,
+      surova_odpoved: "pero",
+      jadro_dotazu: "pero",
+      je_zprava: true, //neivm jak to ma vypadat pro boolean, 1 mi taky nefungovalo
+      podobne: vymyslenaUdalost  //tady nevim co dat
+    }
+  }
+
+export default function Cviceni2() {
+  const [odeslany, setOdeslany] = useState("")
+
+  const [nacita, setNacita] = useState(false)
+  const [vysledek, setVysledek] = useState<Odpoved | null>(null)
+
+  return (
+    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+      <h1>Druhá sada</h1>
+
+      <SeznamUdalosti></SeznamUdalosti>
+      <VstupClanku onOdeslat = {async (text) => {
+        setOdeslany(text)
+        setNacita(true)
+        try {
+          setVysledek(await predikujNaoko())
+        }
+        finally{
+          setNacita(false)
+        }
+      }}></VstupClanku>
+      {
+        nacita && <p>počítám</p>
+      }
+      {
+        vysledek ? <p>{vysledek.predikce} {vysledek.jadro_dotazu}</p> : <p></p>
+      }
+      <>
+        <p>
+          {odeslany}
+        </p>
+      </>   
+
+    </div>
+  )
+}
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -601,16 +659,4 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
 //   a u obhajoby bys musel vysvětlit proč tam jsou.
 
 
-export default function Cviceni2() {
-  return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Druhá sada</h1>
 
-      <SeznamUdalosti></SeznamUdalosti>
-
-
-      {/* Sem skládej komponenty z úkolů 6 až 12. */}
-
-    </div>
-  )
-}
