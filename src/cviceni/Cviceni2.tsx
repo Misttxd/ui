@@ -406,19 +406,19 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
 //   si TypeScript postěžuje. Nepovinné (`dotazy_modelu?`) vynechat můžeš.
 
 
-  const pockej = (ms: number) => new Promise((hotovo) => setTimeout(hotovo, ms))
+  // const pockej = (ms: number) => new Promise((hotovo) => setTimeout(hotovo, ms))
 
-  async function predikujNaoko() : Promise<Odpoved> {
-    await pockej (2000)
-    return {
-      rezim: 'prosty_rag',
-      predikce: 'up' ,
-      surova_odpoved: "pero",
-      jadro_dotazu: "pero",
-      je_zprava: true, //neivm jak to ma vypadat pro boolean, 1 mi taky nefungovalo
-      podobne: vymyslenaUdalost  //tady nevim co dat
-    }
-  }
+  // async function predikujNaoko() : Promise<Odpoved> {
+  //   await pockej (2000)
+  //   return {
+  //     rezim: 'prosty_rag',
+  //     predikce: 'up' ,
+  //     surova_odpoved: "pero",
+  //     jadro_dotazu: "pero",
+  //     je_zprava: true, //neivm jak to ma vypadat pro boolean, 1 mi taky nefungovalo
+  //     podobne: vymyslenaUdalost  //tady nevim co dat
+  //   }
+  // }
 
 export default function Cviceni2() {
   const [odeslany, setOdeslany] = useState("")
@@ -435,7 +435,7 @@ export default function Cviceni2() {
         setOdeslany(text)
         setNacita(true)
         try {
-          setVysledek(await predikujNaoko())
+          setVysledek(await predikuj())
         }
         finally{
           setNacita(false)
@@ -475,7 +475,7 @@ export default function Cviceni2() {
 // z něj chceš používat jinde, označíš slovem `export`:
 //
 //   // src/pozdravy.ts
-//   export type Osoba = { jmeno: string }
+//   export type Osoba = { jmeno: string, prijmeni: string }
 //   export function pozdrav(o: Osoba) { return 'Ahoj ' + o.jmeno }
 //
 // A jinde je naimportuješ ve složených závorkách:
@@ -580,6 +580,7 @@ export default function Cviceni2() {
 //   za hodnotou. Napiš podmínku podle bodu 4 — tady ta hodnota opravdu chybět
 //   může, na rozdíl od `root` v main.tsx.
 
+const [chyba, setChyba] = useState<String | null>(null)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 12 — hotové komponenty z Mantine
