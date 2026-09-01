@@ -1,5 +1,7 @@
 import { Button } from '@mantine/core'
 import { useState } from 'react'
+import type { Odpoved } from '../api'
+import { predikuj } from '../api'
 // ŠKOLA REACTU + TYPESCRIPTU — druhá sada, úkoly 6 až 12
 //
 // První sada byla o syntaxi. Tahle je o mechanikách, které skutečně potřebuje
@@ -162,20 +164,6 @@ function SeznamUdalosti() {
 //   skutečnému backendu nekontroluje.
 // • `rezim` má jen dvě možné hodnoty. Vypiš je obě, ať se překlep chytne.
 
-type Dotaz = {
-  dotaz: string
-  nalezeno: number
-}
-
-type Odpoved = {
-  rezim: 'agentni_rag' | 'prosty_rag'
-  predikce: 'up' | 'down' | 'neutral' | null
-  surova_odpoved: string
-  jadro_dotazu: string
-  je_zprava: boolean
-  dotazy_modelu?: Dotaz[]   // otazník: posílá jen agentní endpoint
-  podobne: Udalost[]        // stejný typ jako v úkolu 6, jen doplněný
-}
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 8 — funkce jako prop
 // ═══════════════════════════════════════════════════════════════════════════
@@ -420,43 +408,6 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
   //   }
   // }
 
-export default function Cviceni2() {
-  const [odeslany, setOdeslany] = useState("")
-
-  const [nacita, setNacita] = useState(false)
-  const [vysledek, setVysledek] = useState<Odpoved | null>(null)
-
-  return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Druhá sada</h1>
-
-      <SeznamUdalosti></SeznamUdalosti>
-      <VstupClanku onOdeslat = {async (text) => {
-        setOdeslany(text)
-        setNacita(true)
-        try {
-          setVysledek(await predikuj())
-        }
-        finally{
-          setNacita(false)
-        }
-      }}></VstupClanku>
-      {
-        nacita && <p>počítám</p>
-      }
-      {
-        vysledek ? <p>{vysledek.predikce} {vysledek.jadro_dotazu}</p> : <p></p>
-      }
-      <>
-        <p>
-          {odeslany}
-        </p>
-      </>   
-
-    </div>
-  )
-}
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 11 — skutečné volání backendu
@@ -580,7 +531,58 @@ export default function Cviceni2() {
 //   za hodnotou. Napiš podmínku podle bodu 4 — tady ta hodnota opravdu chybět
 //   může, na rozdíl od `root` v main.tsx.
 
-const [chyba, setChyba] = useState<String | null>(null)
+export default function Cviceni2() {
+  const [odeslany, setOdeslany] = useState('')
+  const [nacita, setNacita] = useState(false)
+  const [vysledek, setVysledek] = useState<Odpoved | null>(null)
+  
+  const [chyba, setChyba] = useState<string | null>(null)
+
+  let obsah
+  if (nacita) {
+    obsah = <p>počítám…</p>
+  } else if (chyba !== null) {
+    obsah = <p>Chyba: {chyba}. Běží backend a Ollama?</p>
+  } else if (vysledek !== null) {
+    obsah =
+      vysledek.predikce === null ? (
+        <p>Model neodpověděl použitelnou třídou.</p>
+      ) : (
+        <p>
+          {vysledek.predikce} — {vysledek.jadro_dotazu}
+        </p>
+      )
+  } else {
+    obsah = <p>Vlož článek a klikni na Předpovědět.</p>
+  }
+
+  return (
+    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+      <h1>Druhá sada</h1>
+
+      <SeznamUdalosti />
+      <VstupClanku
+        onOdeslat={async (text) => {
+          setOdeslany(text)
+          setChyba(null)
+          setNacita(true)
+          try {
+            setVysledek(await predikuj(text))
+          } catch (potiz) {
+            setChyba(potiz instanceof Error ? potiz.message : 'Neznámá chyba')
+            setVysledek(null)
+          } finally {
+            setNacita(false)
+          }
+        }}
+      />
+
+      {obsah}
+
+      <p>{odeslany}</p>
+    </div>
+  )
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 12 — hotové komponenty z Mantine
