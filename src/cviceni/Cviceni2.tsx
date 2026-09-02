@@ -1,7 +1,8 @@
-import { Button } from '@mantine/core'
 import { useState } from 'react'
 import type { Odpoved } from '../api'
 import { predikuj } from '../api'
+
+import { Container, Stack, Textarea, Button, Loader, Alert, Badge } from '@mantine/core'
 // ŠKOLA REACTU + TYPESCRIPTU — druhá sada, úkoly 6 až 12
 //
 // První sada byla o syntaxi. Tahle je o mechanikách, které skutečně potřebuje
@@ -211,18 +212,27 @@ function SeznamUdalosti() {
 // • Tlačítko by nemělo jít zmáčknout, když je pole prázdné. Atribut `disabled`
 //   bere true/false, takže mu můžeš rovnou předat výsledek porovnání.
 
-type vstupClankuProps = {
-  onOdeslat: (text:string) => void
+type VstupClankuProps = {
+  onOdeslat: (text: string) => void
+  nacita: boolean
 }
 
-function VstupClanku({onOdeslat}: vstupClankuProps){
+
+
+
+function VstupClanku({onOdeslat, nacita}: VstupClankuProps){
   const [text, setText] = useState("")
+
+  
 
   return (
     <div>
-      <textarea value = {text} onChange={(e) => setText(e.target.value)}></textarea>
-      <Button disabled = {text == ''} onClick={()=> onOdeslat(text)}>Předpovědět</Button>
+      <Textarea value = {text} onChange={(e) => setText(e.target.value) } label="Text článku"
+    placeholder="Vlož článek…" autosize
+    minRows={6}></Textarea>
+      <Button disabled = {text == ''} onClick={()=> onOdeslat(text)} loading={nacita}>Předpovědět</Button>
     </div>
+
   )
 }
 
@@ -531,59 +541,6 @@ function VstupClanku({onOdeslat}: vstupClankuProps){
 //   za hodnotou. Napiš podmínku podle bodu 4 — tady ta hodnota opravdu chybět
 //   může, na rozdíl od `root` v main.tsx.
 
-export default function Cviceni2() {
-  const [odeslany, setOdeslany] = useState('')
-  const [nacita, setNacita] = useState(false)
-  const [vysledek, setVysledek] = useState<Odpoved | null>(null)
-  
-  const [chyba, setChyba] = useState<string | null>(null)
-
-  let obsah
-  if (nacita) {
-    obsah = <p>počítám…</p>
-  } else if (chyba !== null) {
-    obsah = <p>Chyba: {chyba}. Běží backend a Ollama?</p>
-  } else if (vysledek !== null) {
-    obsah =
-      vysledek.predikce === null ? (
-        <p>Model neodpověděl použitelnou třídou.</p>
-      ) : (
-        <p>
-          {vysledek.predikce} — {vysledek.jadro_dotazu}
-        </p>
-      )
-  } else {
-    obsah = <p>Vlož článek a klikni na Předpovědět.</p>
-  }
-
-  return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Druhá sada</h1>
-
-      <SeznamUdalosti />
-      <VstupClanku
-        onOdeslat={async (text) => {
-          setOdeslany(text)
-          setChyba(null)
-          setNacita(true)
-          try {
-            setVysledek(await predikuj(text))
-          } catch (potiz) {
-            setChyba(potiz instanceof Error ? potiz.message : 'Neznámá chyba')
-            setVysledek(null)
-          } finally {
-            setNacita(false)
-          }
-        }}
-      />
-
-      {obsah}
-
-      <p>{odeslany}</p>
-    </div>
-  )
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ÚKOL 12 — hotové komponenty z Mantine
 // ═══════════════════════════════════════════════════════════════════════════
@@ -661,5 +618,68 @@ export default function Cviceni2() {
 // • Nepoužívej `recharts` ani `motion`. Jsou nainstalované, ale nepotřebuješ je
 //   a u obhajoby bys musel vysvětlit proč tam jsou.
 
+const barvy = { down: 'red', neutral: 'gray', up: 'green' }
+
+export default function Cviceni2() {
+  const [odeslany, setOdeslany] = useState('')
+  const [nacita, setNacita] = useState(false)
+  const [vysledek, setVysledek] = useState<Odpoved | null>(null)
+  
+  const [chyba, setChyba] = useState<string | null>(null)
+
+  let obsah
+  if (nacita) {
+    obsah = <p>počítám…</p>
+  } else if (chyba !== null) {
+    obsah = <p>
+      Chyba: {chyba}. Běží backend a Ollama?
+      <Alert color="red"></Alert>
+    </p>
+  } else if (vysledek !== null) {
+    obsah =
+      vysledek.predikce === null ? (
+        <p>Model neodpověděl použitelnou třídou.</p>
+      ) : (
+        <p>
+          {vysledek.predikce} — {vysledek.jadro_dotazu}
+          <Badge color={barvy[vysledek.predikce]} size="lg"> {vysledek.predikce}
+        </Badge>
+        </p>
+      )
+  } else {
+    obsah = <p>Vlož článek a klikni na Předpovědět.</p>
+  }
+
+  return (
+    
+    
+    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+      <h1>Druhá sada</h1>
+
+      <SeznamUdalosti />
+      <VstupClanku 
+        onOdeslat={async (text) => {
+          setOdeslany(text)
+          setChyba(null)
+          setNacita(true)
+          try {
+            setVysledek(await predikuj(text))
+          } catch (potiz) {
+            setChyba(potiz instanceof Error ? potiz.message : 'Neznámá chyba')
+            setVysledek(null)
+          } finally {
+            setNacita(false)
+          }
+        } } nacita = {nacita}
+      />
+
+      {obsah}
+
+      <p>{odeslany}</p>
+
+      
+    </div>
+  )
+}
 
 

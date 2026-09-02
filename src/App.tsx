@@ -14,10 +14,17 @@
 import Cviceni from './cviceni/Cviceni'
 import Cviceni2 from './cviceni/Cviceni2'
 
+import { Container, Stack, Textarea, Button, Loader, Alert, Badge } from '@mantine/core'
+
 export default function App() {
   return (
     <>
-      <Cviceni2 /> 
+    <Container size={"sm"}>
+        <Stack>
+          <Cviceni2 />  
+      </Stack>
+    </Container>
+      
       
     </>
   )
