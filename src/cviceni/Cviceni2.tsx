@@ -631,10 +631,10 @@ export default function Cviceni2() {
   if (nacita) {
     obsah = <p>počítám…</p>
   } else if (chyba !== null) {
-    obsah = <p>
-      Chyba: {chyba}. Běží backend a Ollama?
-      <Alert color="red"></Alert>
-    </p>
+    obsah = 
+    <Alert color="red" title="Chyba">
+      {chyba}. Běží backend a Ollama?
+    </Alert>
   } else if (vysledek !== null) {
     obsah =
       vysledek.predikce === null ? (
