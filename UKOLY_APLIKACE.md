@@ -422,70 +422,356 @@ málo a rozdíly mezi metodami jsou v mezích náhody.
 Tenhle úkol plní **bod 5 zadání**.
 
 ---
-
 # ČÁST 2 — backend, Python
 
-Bez těchhle tří věcí nejdou postavit grafy ani průběh. Píšeš je v Pythonu ve
-složce `MANUÁLNÍ`. Ke každému dostaneš podrobnější vedení, až se k němu
-dostaneš — tady je jen rozsah, ať víš, co tě čeká.
+Tyhle čtyři úkoly píšeš v Pythonu ve složce `MANUÁLNÍ`. Bez nich nejdou postavit
+grafy ani živý průběh.
+
+Python znáš méně než React, takže tu platí totéž: syntaxe napřed na cizím
+příkladu, pak zadání.
+
+Spuštění backendu po každé změně:
+
+```
+cd "C:\Users\Andreas\Documents\Bakalářská práce\MANUÁLNÍ"
+uvicorn api:app --reload
+```
+
+`--reload` znamená, že se server po uložení souboru restartuje sám.
+
+---
 
 ## Úkol I — stažení článku z odkazu
 
-Nový endpoint, který dostane URL, stáhne stránku, vytáhne z ní text a vrátí ho.
+### CO SE UČÍŠ
 
-Kód na extrakci už máš: `main_text` a `clean_html`
-v `IMPLEMENTACE/dataset_v4/collect_candidates.py`. Nepiš to znovu, přenes to.
+**Nový endpoint.** Endpoint je funkce s dekorátorem. Dekorátor je ten řádek se
+zavináčem nad funkcí; říká FastAPI „tuhle funkci zavolej, když přijde takový
+požadavek":
 
-Rozhodnutí, které tě čeká: vrátit jen text a nechat uživatele potvrdit, nebo
-rovnou předpovědět. Doporučuju první — uvidíš, jestli se extrakce povedla.
+```python
+class Adresa(BaseModel):
+    url: str
+
+@app.post("/nacti")
+def nacti(vstup: Adresa):
+    return {"text": "..."}
+```
+
+`BaseModel` popisuje, co v požadavku přijde — je to obdoba `type` v TypeScriptu.
+FastAPI podle něj vstup zkontroluje a sám vrátí chybu, když nesedí.
+
+Vrácený slovník se automaticky převede na JSON.
+
+**Import z jiné složky.** Extrakci textu už máš napsanou v
+`IMPLEMENTACE/dataset_v4/collect_candidates.py` — funkce `fetch`, `main_text`
+a `clean_html`. Jsou v jiném stromu, takže cesta se musí přidat ručně:
+
+```python
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "IMPLEMENTACE" / "dataset_v4"))
+from collect_candidates import main_text, clean_html
+```
+
+`Path(__file__)` je cesta k tomuhle souboru, `.parents[1]` o dvě úrovně výš.
+
+Druhá možnost je ty tři funkce prostě zkopírovat do nového souboru v `MANUÁLNÍ`.
+U bakalářky je to obhajitelné — `MANUÁLNÍ` je pak samostatná větev, která na nic
+jiného nespoléhá.
+
+**Chyby.** Když se stránka nestáhne, endpoint má vrátit srozumitelnou chybu, ne
+spadnout:
+
+```python
+from fastapi import HTTPException
+
+raise HTTPException(status_code=400, detail="Stránku se nepodařilo stáhnout")
+```
+
+Ten `detail` dorazí do frontendu a můžeš ho ukázat v `Alert`.
+
+### MÁŠ NA VÝBĚR
+
+- **vrátit jen text, nebo rovnou předpovědět.** Doporučuju první: uživatel uvidí,
+  co se stáhlo, a může to opravit. Extrakce z libovolného webu se nepovede vždy.
+- **jestli vracet i titulek a datum publikace** — `meta()` z téhož souboru je umí
+  vytáhnout z HTML
+- **jak dlouhý text propustit** — velmi krátký výsledek většinou znamená, že se
+  extrakce nepovedla; můžeš to rovnou odmítnout
+
+### MUSÍ PLATIT
+
+- endpoint přijme URL a vrátí text článku
+- nefunkční nebo nesmyslná adresa vrátí čitelnou chybu, ne pád serveru
+- CORS na `http://localhost:5173` platí i pro nový endpoint (je nastavený pro
+  celou aplikaci v `api.py`, takže nic dělat nemusíš — jen to ověř)
+
+---
 
 ## Úkol J — očekávaný rozsah pohybu
 
-Rozhodl ses, že model má vracet i rozsah, ne jen třídu. To znamená:
+### CO SE UČÍŠ
 
-1. upravit prompt, aby model vracel i číslo
-2. rozšířit parsování v `spolecne.py` — dnes `preved_na_tridu` hledá jen slovo
-3. přidat pole do odpovědi API a do typu `Odpoved`
+Model dnes vrací jedno slovo. `preved_na_tridu` v `spolecne.py` z odpovědi
+vytáhne `down`, `neutral` nebo `up` a nic víc.
 
-**Dvě věci, na které si dej pozor.** Model dnes na třídě dosahuje macro-F1 kolem
-0,3, tedy sotva nad náhodou. Rozsah bude nutně ještě méně spolehlivý, protože je
-to těžší úloha. V rozhraní i v práci to musí být popsané jako odhad modelu, ne
-jako předpověď ceny.
+Chceš k tomu číslo. Nejjistější cesta je nechat model odpovědět **strukturovaně**
+a pak to rozparsovat.
 
-Levnější alternativa, kdyby se to nedařilo: rozsah nespočítat modelem, ale
-z mediánu skutečných pohybů u nalezených podobných událostí. Je to poctivé,
-vysvětlitelné a nevyžaduje změnu promptu.
+**Hledání čísla v textu.** Regulární výraz najde v odpovědi číslo:
+
+```python
+import re
+
+nalezeno = re.search(r"-?\d+[.,]?\d*", odpoved)
+if nalezeno:
+    cislo = float(nalezeno.group().replace(",", "."))
+else:
+    cislo = None
+```
+
+`r"..."` je surový řetězec, aby se zpětná lomítka nebrala jako escapy.
+`-?` znamená volitelné minus, `\d+` jednu a víc číslic, `[.,]?` volitelnou
+desetinnou čárku nebo tečku. `.group()` vrátí nalezený text.
+
+**Bezpečnější varianta: ptát se na JSON.** Když prompt řekne „odpověz jedním JSON
+objektem", dá se odpověď načíst rovnou:
+
+```python
+import json
+
+zacatek = odpoved.find("{")
+konec = odpoved.rfind("}")
+data = json.loads(odpoved[zacatek : konec + 1])
+```
+
+Krájení `odpoved[zacatek : konec + 1]` vyřízne část textu od pozice do pozice.
+Model totiž často okolo JSONu něco připíše.
+
+Obal to do `try/except`, protože model občas vrátí nesmysl:
+
+```python
+try:
+    data = json.loads(...)
+except json.JSONDecodeError:
+    data = None
+```
+
+**Přidání pole do odpovědi.** V `api.py` v návratovém slovníku prostě přibude
+další klíč. Nezapomeň ho pak doplnit i do typu `Odpoved` v `src/api.ts`, jinak
+o něm frontend nebude vědět.
+
+### MÁŠ NA VÝBĚR
+
+Máš dvě cesty, jak rozsah získat, a nemusíš si vybrat napořád:
+
+1. **z modelu** — upravíš prompt, model vrátí i číslo. Věrnější tvému zadání.
+2. **z historie** — spočítáš ho z `zmena_pct` nalezených podobných událostí.
+   Nevyžaduje sahat na prompt a číslo je vždycky rozumné.
+
+U druhé cesty se hodí medián, protože jedna extrémní událost neposune výsledek:
+
+```python
+import statistics
+
+hodnoty = [u["zmena_pct"] for u in podobne]
+stred = statistics.median(hodnoty)
+```
+
+Ten zápis v hranatých závorkách je *list comprehension* — z každého prvku `u`
+vezme jednu položku a poskládá nový seznam.
+
+- jestli vrátíš jedno číslo, nebo dvojici dolní a horní mez
+- jestli číslo bude v procentech, nebo rovnou v dolarech (frontend má cenu
+  v okamžiku publikace z úkolu K, takže si to přepočítat umí)
+
+### MUSÍ PLATIT
+
+- odpověď API obsahuje nové pole a typ `Odpoved` v `src/api.ts` o něm ví
+- když se číslo nepodaří získat, pole je `null` a nic nespadne
+- frontend `null` snese
+
+Ať zvolíš cokoliv, u grafu musí být napsané, že jde o odhad. To je jediná věta,
+kterou u obhajoby budeš potřebovat.
+
+---
 
 ## Úkol K — cenová okna kolem událostí
 
-Aby šly kreslit svíčky, potřebuješ pro každou událost v databázi okno
-minutových svíček, řekněme −30 až +90 minut kolem publikace.
+Tenhle úkol dělej hned po části 1. Odemkne graf u historických událostí, což je
+nejnázornější věc v celém rozhraní.
 
-1. jednorázový skript, který z `G:\LLM\btc-project\data\market\binance_btcusdt_1m_2017_2026.csv.gz`
-   vyřízne okno kolem každé události a uloží ho
-2. endpoint `GET /candles/{id}`, který okno vrátí
+### CO SE UČÍŠ
 
-Ten minutový soubor má stovky megabajtů a **nesmí se otevírat při každém
-dotazu**, jinak se rozhraní zasekne. Předpočítaná okna zaberou jednotky
-megabajtů.
+**Čtení komprimovaného CSV.** Soubor
+`G:\LLM\btc-project\data\market\binance_btcusdt_1m_2017_2026.csv.gz`
+má stovky megabajtů. Otevírá se jako obyčejný textový soubor, jen přes `gzip`:
 
-Pro graf u predikce potřebuješ i okno kolem **aktuálního** času, tedy čerstvá
-data z Binance.
+```python
+import csv
+import gzip
+
+with gzip.open(cesta, "rt", encoding="utf-8") as soubor:
+    for radek in csv.DictReader(soubor):
+        print(radek["open"])
+```
+
+`"rt"` znamená čtení v textovém režimu. `DictReader` udělá z každého řádku
+slovník, kde klíče jsou názvy sloupců z první řádky.
+
+Nejdřív si vypiš první řádek a podívej se, jak se sloupce jmenují — nehádej to.
+
+**Čas.** Binance ukládá čas obvykle jako milisekundy od roku 1970. Převod:
+
+```python
+from datetime import datetime, timezone
+
+cas = datetime.fromtimestamp(int(radek["open_time"]) / 1000, tz=timezone.utc)
+```
+
+A opačně, protože `lightweight-charts` chce sekundy:
+
+```python
+sekundy = int(cas.timestamp())
+```
+
+**Okno kolem události.** `timedelta` je rozdíl dvou časů:
+
+```python
+from datetime import timedelta
+
+zacatek = udalost_cas - timedelta(minutes=30)
+konec = udalost_cas + timedelta(minutes=90)
+
+if zacatek <= cas <= konec:
+    ...
+```
+
+**Uložení.** Pro každou událost jeden malý soubor, pojmenovaný podle jejího id:
+
+```python
+import json
+
+with open(f"candles/{id_udalosti}.json", "w", encoding="utf-8") as soubor:
+    json.dump(svicky, soubor)
+```
+
+`f"..."` je f-řetězec: co je ve složených závorkách, se dosadí. Je to obdoba
+`${}` v JavaScriptu.
+
+**Endpoint, který soubor vrátí.** Hodnota z cesty se zapíše do složených závorek
+a jako parametr funkce:
+
+```python
+@app.get("/candles/{id_udalosti}")
+def candles(id_udalosti: str):
+    cesta = Path("candles") / f"{id_udalosti}.json"
+    if not cesta.is_file():
+        raise HTTPException(status_code=404, detail="Okno není předpočítané")
+    return json.loads(cesta.read_text(encoding="utf-8"))
+```
+
+### MÁŠ NA VÝBĚR
+
+- **velikost okna.** −30/+90 minut je rozumný začátek. Míň je nepřehledné, víc
+  zbytečně velké.
+- **kde soubory budou.** Do gitu nepatří, tak si na ně přidej řádek
+  do `.gitignore`, nebo je dej rovnou na `G:`.
+- **jestli k oknu přiložíš i cenu v okamžiku publikace.** Doporučuju ano —
+  frontend z ní umí spočítat rozsah v dolarech.
+- **jak události identifikovat.** Pole `podobne` z API dnes žádné `id` neposílá,
+  takže si budeš muset vybrat klíč. `url` je jednoznačná, ale jako součást
+  adresy endpointu se musí zakódovat. Jednodušší je přidat do odpovědi API
+  krátké `id` a používat to.
+
+**Ten velký soubor se nesmí otevírat při každém dotazu.** Projdi ho jednou
+skriptem, ulož okna, a endpoint už jen čte malé soubory. Jinak se rozhraní
+při každém rozkliknutí na dlouho zasekne.
+
+### MUSÍ PLATIT
+
+- skript proběhne jednou a vytvoří okna pro všechny události v databázi
+- `GET /candles/<id>` vrátí okno do jedné vteřiny
+- neexistující id vrátí 404, ne pád
+- svíčky mají `time` v sekundách, ne v milisekundách ani jako text
+
+---
 
 ## Úkol L — streamování průběhu
 
-Aby se kroky odškrtávaly doopravdy, musí backend posílat postup průběžně.
-Slouží k tomu Server-Sent Events: jedno spojení, do kterého server píše zprávy,
-jak práce postupuje.
+### CO SE UČÍŠ
 
-FastAPI to umí přes `StreamingResponse`. Endpoint pošle po každé fázi řádek
-typu `data: {"faze": "hledam_v_databazi"}`.
+**Generátor.** Obyčejná funkce spočítá všechno a vrátí to naráz. Generátor
+používá `yield` a vydává hodnoty postupně, jak vznikají:
 
-Na straně prohlížeče se to čte třídou `EventSource`.
+```python
+def pocitej():
+    yield "začínám"
+    vysledek = neco_dlouheho()
+    yield "hotovo"
+```
 
-Rozhodni se, jaké fáze budeš hlásit. Nabízí se: přijato → zestručňuji článek →
-hledám v databázi → ptám se modelu → hotovo. V agentním režimu navíc formulace
-dotazů.
+Volající dostane hodnotu hned, jak ji generátor vydá — nečeká na konec.
+
+**StreamingResponse.** FastAPI umí takový generátor poslat po síti:
+
+```python
+from fastapi.responses import StreamingResponse
+
+@app.get("/prubeh")
+def prubeh():
+    def kroky():
+        yield 'data: {"faze": "zacatek"}\n\n'
+        yield 'data: {"faze": "konec"}\n\n'
+    return StreamingResponse(kroky(), media_type="text/event-stream")
+```
+
+Formát Server-Sent Events je prostý: každá zpráva začíná `data: ` a končí
+**dvěma** znaky nového řádku. Ty dva jsou povinné, jedním to nefunguje.
+
+**Návrhový problém, který musíš vyřešit.** `EventSource` v prohlížeči umí jen
+GET a neumí posílat tělo požadavku. Tvůj `/predict` je POST s článkem v těle.
+Máš tři možnosti:
+
+1. **Dvoufázově.** POST `/predict/start` uloží článek do slovníku v paměti
+   a vrátí `{"id": "..."}`. Frontend pak otevře `EventSource` na
+   `/predict/stream/{id}`. Nejčistší, ale je to dva endpointy a úložiště úloh.
+2. **Článek v adrese.** Text se pošle jako parametr GET. Funguje jen pro krátké
+   texty — adresa má omezenou délku, takže na článek to nestačí. Nedoporučuju.
+3. **Bez EventSource.** Zůstane POST a proud se čte ručně přes `fetch`. Vyžaduje
+   víc kódu na straně Reactu, ale žádný nový endpoint.
+
+Doporučuju první. Slovník úloh může být obyčejná proměnná v `api.py`:
+
+```python
+ulohy: dict[str, str] = {}
+```
+
+Je to v paměti, takže se to při restartu ztratí — pro bakalářskou práci to stačí
+a v textu se to popíše jednou větou.
+
+### MÁŠ NA VÝBĚR
+
+- kterou ze tří cest zvolíš
+- **jaké fáze hlásit.** Nabízí se: přijato → zestručňuji článek → hledám
+  v databázi → ptám se modelu → hotovo. V agentním režimu navíc formulace dotazů,
+  a těch je několik po sobě.
+- jestli spolu s fází posílat i mezivýsledek, například jádro dotazu hned po
+  zestručnění. Uživatel pak vidí něco užitečného dřív.
+- jestli poslední zpráva ponese rovnou celou odpověď, nebo si ji frontend
+  vyzvedne zvlášť
+
+### MUSÍ PLATIT
+
+- fáze dorazí do prohlížeče **v okamžiku, kdy nastanou**, ne všechny naráz na
+  konci
+- když spojení spadne, server to přežije
+- původní `/predict` funguje dál beze změny, ať se máš kam vrátit
+
+Ověření: otevři adresu streamu přímo v prohlížeči a dívej se, jestli řádky
+přibývají postupně. Když naskočí všechny naráz, něco výstup bufferuje.
 
 ---
 
@@ -511,7 +797,7 @@ return <div ref={misto} />
 nevykreslí.
 
 **`useEffect`** spustí kód **po** vykreslení. Používá se přesně na tohle —
-napojení knihovny, která není z Reactu:
+napojení knihovny, která není z Reactu, nebo načtení dat:
 
 ```tsx
 useEffect(() => {
@@ -526,20 +812,47 @@ To pole na konci říká, kdy se má efekt spustit znovu. Prázdné `[]` znamen�
 jednou při vzniku komponenty. Když tam dáš proměnnou, spustí se při každé její
 změně.
 
-Ta vrácená funkce je úklid. U grafu je povinná — bez `chart.remove()` zůstane
+Ta vrácená funkce je úklid. U grafu je povinná — bez `graf.remove()` zůstane
 graf v paměti a po pár rozkliknutích se stránka zpomalí.
 
-**Graf v5** (verze se od starších návodů na internetu liší, dej si pozor):
+**Načtení dat z backendu uvnitř efektu.** Tohle je ta pracnější polovina.
+`useEffect` nesmí být `async`, takže se async funkce napíše dovnitř a hned
+zavolá:
+
+```tsx
+const [svicky, setSvicky] = useState<Svicka[] | null>(null)
+
+useEffect(() => {
+  let zruseno = false
+
+  async function nacti() {
+    const odpoved = await fetch(`http://localhost:8000/candles/${id}`)
+    const data = await odpoved.json()
+    if (!zruseno) setSvicky(data)
+  }
+  nacti()
+
+  return () => { zruseno = true }
+}, [id])
+```
+
+Ta proměnná `zruseno` řeší situaci, kdy uživatel kartu zavře dřív, než data
+dorazí. Bez ní by se `setSvicky` zavolalo na komponentě, která už neexistuje.
+
+Na typ `Svicka` si napiš vlastní type se čtyřmi čísly a časem, stejně jako
+`Udalost` v úkolu 7.
+
+**Graf, verze 5** (návody na internetu jsou často pro 4, dej si pozor):
 
 ```tsx
 import { createChart, CandlestickSeries, createSeriesMarkers } from 'lightweight-charts'
 
 useEffect(() => {
-  if (misto.current === null) return
+  if (misto.current === null || svicky === null) return
 
   const graf = createChart(misto.current, { height: 220 })
   const rada = graf.addSeries(CandlestickSeries, {})
-  rada.setData(svicky)   // [{ time, open, high, low, close }, ...]
+  rada.setData(svicky)
 
   createSeriesMarkers(rada, [
     { time: casUdalosti, position: 'aboveBar', shape: 'arrowDown', text: 'zpráva' },
@@ -551,7 +864,10 @@ useEffect(() => {
 }, [svicky])
 ```
 
-`time` očekává čas v sekundách od roku 1970, ne ISO text. Převod:
+Všimni si, že to jsou **dva samostatné efekty**: jeden načte data, druhý kreslí.
+Druhý má `svicky` v závislostech, takže se spustí, jakmile data dorazí.
+
+`time` chce sekundy od roku 1970, ne ISO text:
 
 ```ts
 Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
@@ -564,9 +880,10 @@ Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
 - **jak vyznačit okamžik události.** Značka (`createSeriesMarkers`) je nejsnazší
   a je součástí knihovny. Skutečnou svislou čáru přes celý graf umí až oficiální
   plugin `vertical-line`, který se musí doinstalovat. Začni značkou.
-- **kdy graf načíst** — hned u všech událostí, nebo až při rozkliknutí. Doporučuju
-  až při rozkliknutí, jinak posíláš osm požadavků naráz.
-- **velikost okna** — kolik minut před a po
+- **kdy graf načíst** — hned u všech událostí, nebo až při rozkliknutí.
+  Doporučuju až při rozkliknutí, jinak posíláš osm požadavků naráz. `Accordion`
+  z úkolu F se na to hodí.
+- **co ukázat, než data dorazí** — `Skeleton` nebo `Loader` z Mantine
 - **jestli přidat vodorovnou čáru s cenou v okamžiku publikace** —
   `rada.createPriceLine({ price, title: 'cena při publikaci' })`
 
@@ -574,7 +891,7 @@ Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
 
 - graf jde otevřít u každé nalezené události
 - okamžik zprávy je v grafu jednoznačně vidět
-- při zavření se graf uklidí (`graf.remove()` ve funkci úklidu)
+- při zavření se graf uklidí
 - zavření a otevření dvaceti grafů za sebou stránku nezpomalí
 
 ---
@@ -583,8 +900,20 @@ Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
 
 ### CO SE UČÍŠ
 
-Stejná technika jako v úkolu M. Navíc vodorovné cenové linky, které vyznačí
-rozsah:
+Stejná technika jako v úkolu M. Rozdíl je v tom, odkud vezmeš svíčky: u historické
+události je okno předpočítané, tady potřebuješ **aktuální** cenu.
+
+Dvě možnosti:
+
+1. **Nový endpoint na backendu**, který si stáhne posledních pár hodin z Binance
+   a vrátí je. Binance má veřejné API bez klíče:
+   `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=120`
+2. **Volat Binance přímo z prohlížeče.** Funguje, ale zamotává to architekturu —
+   frontend by pak mluvil se dvěma různými servery.
+
+Doporučuju první, aby všechno šlo přes tvůj backend.
+
+Vodorovné cenové linky vyznačí rozsah:
 
 ```tsx
 rada.createPriceLine({
@@ -595,21 +924,23 @@ rada.createPriceLine({
 })
 ```
 
+Rozsah přijde z úkolu J v procentech, takže se přepočítá na cenu:
+
+```ts
+const horniOkraj = cenaTed * (1 + rozsah / 100)
+```
+
 ### MÁŠ NA VÝBĚR
 
 - **jak rozsah zobrazit** — dvě čárkované linky, nebo podbarvená oblast
-- **jestli podbarvit i 30minutové okno** po publikaci barvou třídy
+- **jestli podbarvit 30minutové okno** po publikaci barvou třídy
 - **jak odlišit odhad od skutečnosti** — čárkovaně, průhledněji, jinou barvou
+- **jak často aktualizovat** — jednou při zobrazení stačí
 
 ### MUSÍ PLATIT
 
-- z grafu je na první pohled jasné, co je skutečná cena a co odhad modelu
-- **u grafu je napsáno, že jde o odhad modelu, ne o předpověď ceny**
-
-Ten poslední bod není kosmetika. Model má na třídě macro-F1 kolem 0,3, tedy
-sotva nad náhodou, a rozsah bude ještě méně spolehlivý. Graf, který vypadá jako
-předpověď ceny, tvrdí mnohem víc, než systém umí — a u obhajoby je to první
-otázka, která přijde.
+- z grafu je na první pohled jasné, co je skutečná cena a co odhad
+- u grafu je napsáno, že jde o odhad modelu
 
 ---
 
@@ -619,43 +950,60 @@ otázka, která přijde.
 
 Kroky ukážeš jako seznam a streamování je odškrtává, jak se doopravdy dějí.
 
-Napojení na SSE z úkolu L:
+**Napojení na stream z úkolu L**, dvoufázovou cestou:
 
 ```tsx
 useEffect(() => {
-  const zdroj = new EventSource('http://localhost:8000/predict/stream?...')
+  if (idUlohy === null) return
+
+  const zdroj = new EventSource(`http://localhost:8000/predict/stream/${idUlohy}`)
 
   zdroj.onmessage = (zprava) => {
     const data = JSON.parse(zprava.data)
     setFaze(data.faze)
   }
 
+  zdroj.onerror = () => zdroj.close()
+
   return () => zdroj.close()
-}, [/* kdy začít */])
+}, [idUlohy])
 ```
 
-Zase `useEffect` s úklidem — bez `zdroj.close()` zůstane spojení otevřené.
+Nejdřív tedy pošleš POST, dostaneš `id`, uložíš ho do stavu — a tenhle efekt se
+díky závislosti `[idUlohy]` sám spustí.
 
-Na zobrazení se hodí Mantine `Timeline` s propem `active`, nebo `Stepper`:
+Bez `zdroj.close()` zůstane spojení otevřené i po dokončení.
+
+**Převod názvu fáze na číslo.** Mantine `Timeline` chce index, ne text. Uděláš si
+seznam fází v pořadí a najdeš pozici:
 
 ```tsx
-<Timeline active={cisloFaze}>
+const FAZE = ['prijato', 'zestrucnuji', 'hledam', 'ptam_se', 'hotovo']
+
+const cislo = FAZE.indexOf(faze)
+```
+
+`indexOf` vrátí pozici prvku v poli, nebo `-1`, když tam není.
+
+```tsx
+<Timeline active={cislo}>
   <Timeline.Item title="Zestručňuji článek" />
   <Timeline.Item title="Hledám v databázi" />
   <Timeline.Item title="Ptám se modelu" />
 </Timeline>
 ```
 
-Hotové kroky se vykreslí jinak než ty budoucí. `active` je index, takže si
-potřebuješ převést název fáze na číslo.
+Hotové kroky se vykreslí jinak než ty budoucí.
 
 ### MÁŠ NA VÝBĚR
 
 - `Timeline` (svisle, s čárou) nebo `Stepper` (vodorovně)
 - jestli u hotových kroků ukážeš, jak dlouho trvaly. Zestručnění trvá kolem
-  šesti sekund, což je poctivá informace.
+  šesti sekund, což je poctivá informace. Čas si změříš `Date.now()` při každé
+  změně fáze.
 - jestli seznam kroků ukážeš i před spuštěním — uživatel pak dopředu vidí, co
   systém dělá
+- jestli v agentním režimu ukážeš každý dotaz zvlášť, jak vzniká
 
 ### MUSÍ PLATIT
 
@@ -671,14 +1019,13 @@ potřebuješ převést název fáze na číslo.
 
 ```
 cd "C:\Users\Andreas\Documents\Bakalářská práce\MANUÁLNÍ"
-uvicorn api:app
+uvicorn api:app --reload
 ```
 
 **Vite musí jet na portu 5173**, jinak volání zablokuje prohlížeč kvůli CORS.
 
 **Netestuj na článcích z let 2024 a 2025.** Jsou v databázi a systém si najde
-sám sebe s podobností kolem 1,0. Bude to vypadat skvěle a nebude to pravda.
-Používej rok 2026 nebo čerstvé zprávy.
+sám sebe s podobností kolem 1,0. Používej rok 2026 nebo čerstvé zprávy.
 
 **Po každém úkolu spusť** `npm run typecheck` a `npx eslint src`.
 
@@ -687,10 +1034,14 @@ kde se `addCandlestickSeries` změnilo na `addSeries(CandlestickSeries, ...)`
 a značky se přidávají funkcí `createSeriesMarkers`. Když ti návod nefunguje,
 zkontroluj nejdřív verzi.
 
+**Nové pole v odpovědi backendu přidej vždycky na dvou místech** — do `api.py`
+a do typu `Odpoved` v `src/api.ts`. TypeScript ti nepřipomene, že jsi na druhé
+zapomněl, protože o skutečném backendu nic neví.
+
 # Pořadí
 
-Část 1 celá, protože z ní hned něco máš. Pak úkol K (cenová okna), protože
+Část 1 celá, protože z ní hned něco máš. Pak úkol **K** (cenová okna), protože
 odemkne graf u historických událostí — a to je ta nejnázornější věc v celém
-rozhraní. Pak M. Teprve potom I, J, L a N, O.
+rozhraní. Pak **M**. Teprve potom I, J, L a nakonec N s O.
 
-Kdyby došel čas, části 1 samotná splňuje **bod 6 zadání**.
+Kdyby došel čas, část 1 samotná splňuje **bod 6 zadání**.

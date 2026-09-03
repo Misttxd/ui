@@ -14,6 +14,8 @@
 import Cviceni from './cviceni/Cviceni'
 import Cviceni2 from './cviceni/Cviceni2'
 
+import VstupClanku from './components/1VstupClanku'
+
 import { Container, Stack, Textarea, Button, Loader, Alert, Badge } from '@mantine/core'
 
 export default function App() {
@@ -24,6 +26,8 @@ export default function App() {
           <Cviceni2 />  
       </Stack>
     </Container> */}
+
+    <VstupClanku></VstupClanku>
       
       
     </>
