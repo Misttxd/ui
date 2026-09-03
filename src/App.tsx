@@ -19,11 +19,11 @@ import { Container, Stack, Textarea, Button, Loader, Alert, Badge } from '@manti
 export default function App() {
   return (
     <>
-    <Container size={"sm"}>
+    {/* <Container size={"sm"}>
         <Stack>
           <Cviceni2 />  
       </Stack>
-    </Container>
+    </Container> */}
       
       
     </>
