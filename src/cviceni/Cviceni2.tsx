@@ -663,7 +663,7 @@ export default function Cviceni2() {
           setChyba(null)
           setNacita(true)
           try {
-            setVysledek(await predikuj(text))
+            setVysledek(await predikuj(text, 'prosty'))
           } catch (potiz) {
             setChyba(potiz instanceof Error ? potiz.message : 'Neznámá chyba')
             setVysledek(null)

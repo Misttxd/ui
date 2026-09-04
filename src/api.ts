@@ -25,8 +25,10 @@ export type Odpoved = {
   podobne: Udalost[]        // stejný typ jako v úkolu 6, jen doplněný
 }
 
-export async function predikuj(text: string): Promise<Odpoved> {
-    const odpoved = await fetch('http://localhost:8000/predict', {
+export async function predikuj(text: string, rezim: "prosty" | "agentni"): Promise<Odpoved> {
+  const adresa =
+    rezim === 'agentni' ? 'http://localhost:8000/predict/agent' : 'http://localhost:8000/predict'
+    const odpoved = await fetch(adresa, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text }),

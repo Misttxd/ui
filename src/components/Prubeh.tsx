@@ -1,7 +1,5 @@
-//komponenta zobrazující průběh práce po inputu
+//komponenta zobrazujici prubeh prace po inputu
 
-export default function Prubeh()
-{
-
-    return 0;
+export default function Prubeh() {
+  return null
 }

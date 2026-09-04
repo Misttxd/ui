@@ -1,11 +1,11 @@
 # Úkoly: od cvičení ke skutečné aplikaci
 
-Cvičení máš hotová. Tenhle dokument staví rozhraní podle **tvojí** představy,
-ne podle původního FRONTEND.md — ten byl výrazně skromnější.
+Cvičení máš hotová. Tenhle dokument staví rozhraní podle tvojí představy
+a je jediný závazný popis toho, co má rozhraní obsahovat.
 
 Každý úkol má tři části:
 
-- **CO SE UČÍŠ** — technika a její zápis, na cizím příkladu
+- **CO SE UČÍŠ** — technika a její zápis, rovnou na tvojí aplikaci
 - **MÁŠ NA VÝBĚR** — možnosti, mezi kterými se rozhoduješ ty
 - **MUSÍ PLATIT** — co má na konci fungovat, ať poznáš, že jsi hotový
 
@@ -34,20 +34,22 @@ teprve potom.
 
 ## Úkol A — rozdělení do souborů
 
+**Soubor:** všechny — tenhle úkol je o tom je založit
+
 ### CO SE UČÍŠ
 
 Zatím máš všechno v jednom souboru. Každá komponenta patří do vlastního, jinak
 se v tom nedá hledat a při chybě nevíš kam kouknout.
 
 ```tsx
-// src/components/Vitejte.tsx
-export default function Vitejte() {
-  return <h1>Ahoj</h1>
+// src/components/Predikce.tsx
+export default function Predikce() {
+  return <h2>Výsledek</h2>
 }
 ```
 
 ```tsx
-import Vitejte from './components/Vitejte'
+import Predikce from './components/Predikce'
 ```
 
 Bez složených závorek, protože je to `default`. Cesty: `./` stejná složka,
@@ -70,6 +72,41 @@ Jak jemně to rozdělíš:
 Doporučuju třetí, protože grafy budou složité. Kde soubory budou a jak je
 pojmenuješ, je na tobě — jen buď důsledný.
 
+Jedno možné rozdělení, ať máš od čeho se odrazit. Není závazné, uprav si ho:
+
+```
+src/
+  App.tsx                  drží stav, volá backend, skládá stránku
+  api.ts                   volání backendu a typy (máš)
+  format.ts                formátování data a čísel (úkol E)
+
+  components/
+    VstupClanku.tsx        textarea nebo odkaz, přepínač režimu, tlačítko
+    Prubeh.tsx             seznam kroků zpracování, Timeline nebo Stepper
+    Predikce.tsx           třída, badge, rozsah, jádro dotazu, varování
+    DotazyModelu.tsx       co model hledal, jen agentní režim
+    SeznamUdalosti.tsx     projde pole `podobne` a vykreslí Udalost
+    Udalost.tsx            jedna karta nalezené události
+    Graf.tsx               svíčkový graf
+    Srovnani.tsx           tabulka baseline
+```
+
+`Graf.tsx` napiš obecně — dostane svíčky a volitelně značku a cenové linky
+propem. Použiješ ho pak na dvou místech: u historické události (úkol M)
+i u predikce (úkol N).
+
+Který úkol se kterého souboru týká:
+
+| soubor | úkol |
+|---|---|
+| `VstupClanku.tsx` | B, C |
+| `Udalost.tsx`, `SeznamUdalosti.tsx` | D, E, F |
+| `DotazyModelu.tsx` | G |
+| `Predikce.tsx` | H (varování), J (rozsah) |
+| `Srovnani.tsx` | H (tabulka) |
+| `Graf.tsx` | M, N |
+| `Prubeh.tsx` | O |
+
 Rozmysli si taky, kdo drží stav. Zatím `Cviceni2`, nově nejspíš `App.tsx` nebo
 komponenta, kterou `App` vykreslí.
 
@@ -82,6 +119,8 @@ komponenta, kterou `App` vykreslí.
 ---
 
 ## Úkol B — vstup: text nebo odkaz
+
+**Soubor:** `src/components/VstupClanku.tsx`
 
 ### CO SE UČÍŠ
 
@@ -134,6 +173,8 @@ napiš, že se na ní pracuje.
 
 ## Úkol C — přepínač režimů
 
+**Soubor:** `src/components/VstupClanku.tsx` a `src/api.ts`
+
 ### CO SE UČÍŠ
 
 Backend má dva endpointy: `/predict` a `/predict/agent`. Zatím voláš jen první.
@@ -141,15 +182,19 @@ Backend má dva endpointy: `/predict` a `/predict/agent`. Zatím voláš jen prv
 Funkce `predikuj` dostane druhý parametr. Parametry se oddělují čárkou:
 
 ```ts
-export async function nactiKnihu(nazev: string, jazyk: 'cs' | 'en') {
-  const adresa = jazyk === 'cs' ? '/knihy/cs' : '/knihy/en'
+export async function predikuj(text: string, rezim: 'prosty' | 'agentni'): Promise<Odpoved> {
+  const adresa =
+    rezim === 'agentni'
+      ? 'http://localhost:8000/predict/agent'
+      : 'http://localhost:8000/predict'
+  // zbytek funkce zůstává, jak ho máš
 }
 ```
 
 Adresu můžeš složit i vložením proměnné do textu pomocí zpětných apostrofů:
 
 ```ts
-const adresa = `http://localhost:8000/predict/${jazyk}`
+const adresa = `http://localhost:8000/predict${rezim === 'agentni' ? '/agent' : ''}`
 ```
 
 Tomu se říká šablonový řetězec: co je v `${}`, se dosadí jako hodnota.
@@ -157,14 +202,14 @@ Tomu se říká šablonový řetězec: co je v `${}`, se dosadí jako hodnota.
 Přepínač je řízená komponenta jako `<Textarea>`:
 
 ```tsx
-const [jazyk, setJazyk] = useState('cs')
+const [rezim, setRezim] = useState('prosty')
 
 <SegmentedControl
-  value={jazyk}
-  onChange={setJazyk}
+  value={rezim}
+  onChange={setRezim}
   data={[
-    { label: 'Česky', value: 'cs' },
-    { label: 'Anglicky', value: 'en' },
+    { label: 'Klasický RAG', value: 'prosty' },
+    { label: 'Agentní RAG', value: 'agentni' },
   ]}
 />
 ```
@@ -174,8 +219,8 @@ const [jazyk, setJazyk] = useState('cs')
 ### MÁŠ NA VÝBĚR
 
 - `SegmentedControl`, `Switch`, nebo `Radio.Group` — liší se jen vzhledem
-- popisky: „prostý / agentní RAG" je přesné, ale laik netuší. Zvaž „rychlý /
-  důkladný" s vysvětlivkou v `Tooltip`.
+- popisky: rozhodl ses pro „klasický RAG" a „agentní RAG". Zvaž k nim
+  vysvětlivku v `Tooltip`, co je mezi nimi za rozdíl.
 - jestli přepínač během načítání zakázat
 
 ### MUSÍ PLATIT
@@ -188,23 +233,26 @@ const [jazyk, setJazyk] = useState('cs')
 
 ## Úkol D — karta události a její metriky
 
+**Soubor:** `src/components/Udalost.tsx` a `SeznamUdalosti.tsx`
+
 ### CO SE UČÍŠ
 
 Zatím jsi propem posílal text, číslo a funkci. Stejně se dá poslat **celý
 objekt**:
 
 ```tsx
-import type { Kniha } from '../api'
+import type { Udalost } from '../api'
 
-type KartaProps = {
-  kniha: Kniha
+type UdalostKartaProps = {
+  udalost: Udalost
 }
 
-export default function Karta({ kniha }: KartaProps) {
+export default function UdalostKarta({ udalost }: UdalostKartaProps) {
   return (
     <Card withBorder padding="md">
-      <Text fw={700}>{kniha.nazev}</Text>
-      <Text size="sm" c="dimmed">{kniha.autor}</Text>
+      <Text fw={700}>{udalost.titulek}</Text>
+      <Text size="sm" c="dimmed">{udalost.zdroj}</Text>
+      <Text size="sm">{udalost.jadro}</Text>
     </Card>
   )
 }
@@ -213,8 +261,8 @@ export default function Karta({ kniha }: KartaProps) {
 Použití a v cyklu:
 
 ```tsx
-<Karta kniha={nejakaKniha} />
-{knihy.map((k) => <Karta key={k.isbn} kniha={k} />)}
+<UdalostKarta udalost={jednaUdalost} />
+{vysledek.podobne.map((u) => <UdalostKarta key={u.url} udalost={u} />)}
 ```
 
 Mantine na text: `Text` s propy `size`, `fw` (tloušťka), `c` (barva, `"dimmed"`
@@ -250,6 +298,8 @@ Napiš k `podobnost` vysvětlivku. Ty víš, co to je. Oponent ne.
 ---
 
 ## Úkol E — formátování data a čísel
+
+**Soubor:** `src/format.ts`, používá se v `Udalost.tsx`
 
 ### CO SE UČÍŠ
 
@@ -288,10 +338,12 @@ new Date(datum).toLocaleDateString('cs-CZ', {
 
 ## Úkol F — odkaz na originál a rozbalení textu
 
+**Soubor:** `src/components/Udalost.tsx`
+
 ### CO SE UČÍŠ
 
 ```tsx
-<Anchor href={kniha.url} target="_blank" rel="noreferrer">
+<Anchor href={udalost.url} target="_blank" rel="noreferrer">
   otevřít originál
 </Anchor>
 ```
@@ -301,7 +353,7 @@ z bezpečnostních důvodů.
 
 ```tsx
 <Spoiler maxHeight={80} showLabel="zobrazit celé" hideLabel="skrýt">
-  {kniha.textUkazky}
+  {udalost.obsah}
 </Spoiler>
 ```
 
@@ -324,6 +376,8 @@ Odkaz na originál dokládá, že si systém nic nevymýšlí.
 ---
 
 ## Úkol G — co model hledal (jen agentní režim)
+
+**Soubor:** `src/components/DotazyModelu.tsx`
 
 ### CO SE UČÍŠ
 
@@ -363,6 +417,8 @@ sám a zobecňuje událost.
 
 ## Úkol H — varování a tabulka srovnání
 
+**Soubor:** varování `Predikce.tsx`, tabulka `Srovnani.tsx`
+
 ### CO SE UČÍŠ
 
 Varování je jen podmíněné vykreslování:
@@ -376,12 +432,20 @@ Vykřičník obrací platnost: „když to NENÍ zpráva".
 Tabulka z pole se skládá z podčástí:
 
 ```tsx
+const BASELINE = [
+  { metoda: 'náhoda (100 běhů)', f1: 0.326 },
+  { metoda: 'MACD', f1: 0.324 },
+  { metoda: 'market-only lineární', f1: 0.286 },
+  { metoda: 'RSI 30/70', f1: 0.224 },
+  { metoda: 'majorita', f1: 0.161 },
+]
+
 <Table>
   <Table.Thead>
     <Table.Tr><Table.Th>Metoda</Table.Th><Table.Th>Macro-F1</Table.Th></Table.Tr>
   </Table.Thead>
   <Table.Tbody>
-    {radky.map((r) => (
+    {BASELINE.map((r) => (
       <Table.Tr key={r.metoda}>
         <Table.Td>{r.metoda}</Table.Td>
         <Table.Td>{r.f1.toFixed(3)}</Table.Td>
@@ -443,6 +507,8 @@ uvicorn api:app --reload
 
 ## Úkol I — stažení článku z odkazu
 
+**Soubor:** `MANUÁLNÍ/api.py`
+
 ### CO SE UČÍŠ
 
 **Nový endpoint.** Endpoint je funkce s dekorátorem. Dekorátor je ten řádek se
@@ -450,12 +516,13 @@ zavináčem nad funkcí; říká FastAPI „tuhle funkci zavolej, když přijde 
 požadavek":
 
 ```python
-class Adresa(BaseModel):
+class Odkaz(BaseModel):
     url: str
 
-@app.post("/nacti")
-def nacti(vstup: Adresa):
-    return {"text": "..."}
+@app.post("/nacti_clanek")
+def nacti_clanek(vstup: Odkaz):
+    stranka = fetch(vstup.url, CACHE)
+    return {"text": main_text(stranka)}
 ```
 
 `BaseModel` popisuje, co v požadavku přijde — je to obdoba `type` v TypeScriptu.
@@ -511,6 +578,8 @@ Ten `detail` dorazí do frontendu a můžeš ho ukázat v `Alert`.
 ---
 
 ## Úkol J — očekávaný rozsah pohybu
+
+**Soubor:** `MANUÁLNÍ/api.py`, `spolecne.py` a `src/api.ts`
 
 ### CO SE UČÍŠ
 
@@ -599,6 +668,8 @@ kterou u obhajoby budeš potřebovat.
 ---
 
 ## Úkol K — cenová okna kolem událostí
+
+**Soubor:** nový skript v `MANUÁLNÍ/` a `api.py`
 
 Tenhle úkol dělej hned po části 1. Odemkne graf u historických událostí, což je
 nejnázornější věc v celém rozhraní.
@@ -701,6 +772,8 @@ při každém rozkliknutí na dlouho zasekne.
 
 ## Úkol L — streamování průběhu
 
+**Soubor:** `MANUÁLNÍ/api.py`
+
 ### CO SE UČÍŠ
 
 **Generátor.** Obyčejná funkce spočítá všechno a vrátí to naráz. Generátor
@@ -720,13 +793,22 @@ Volající dostane hodnotu hned, jak ji generátor vydá — nečeká na konec.
 ```python
 from fastapi.responses import StreamingResponse
 
-@app.get("/prubeh")
-def prubeh():
+@app.get("/predict/stream/{id_ulohy}")
+def predict_stream(id_ulohy: str):
     def kroky():
-        yield 'data: {"faze": "zacatek"}\n\n'
-        yield 'data: {"faze": "konec"}\n\n'
+        text = ulohy[id_ulohy]
+        yield 'data: {"faze": "zestrucnuji"}\n\n'
+        vstup = priprav_vstup(text)
+        yield 'data: {"faze": "hledam"}\n\n'
+        podobne = hledej(vstup["core"])
+        yield 'data: {"faze": "ptam_se"}\n\n'
+        # ... zavolání modelu ...
+        yield 'data: {"faze": "hotovo"}\n\n'
     return StreamingResponse(kroky(), media_type="text/event-stream")
 ```
+
+`priprav_vstup` a `hledej` už v `api.py` máš, jen je teď voláš postupně
+a mezi nimi hlásíš, kde jsi.
 
 Formát Server-Sent Events je prostý: každá zpráva začíná `data: ` a končí
 **dvěma** znaky nového řádku. Ty dva jsou povinné, jedním to nefunguje.
@@ -778,6 +860,8 @@ přibývají postupně. Když naskočí všechny naráz, něco výstup bufferuje
 # ČÁST 3 — grafy a průběh, po dokončení části 2
 
 ## Úkol M — svíčkový graf u historické události
+
+**Soubor:** `src/components/Graf.tsx`, používá se v `Udalost.tsx`
 
 ### CO SE UČÍŠ
 
@@ -898,6 +982,8 @@ Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
 
 ## Úkol N — graf predikce s očekávaným rozsahem
 
+**Soubor:** `src/components/Graf.tsx` a `Predikce.tsx`
+
 ### CO SE UČÍŠ
 
 Stejná technika jako v úkolu M. Rozdíl je v tom, odkud vezmeš svíčky: u historické
@@ -945,6 +1031,8 @@ const horniOkraj = cenaTed * (1 + rozsah / 100)
 ---
 
 ## Úkol O — živý průběh zpracování
+
+**Soubor:** `src/components/Prubeh.tsx` a `App.tsx`
 
 ### CO SE UČÍŠ
 
