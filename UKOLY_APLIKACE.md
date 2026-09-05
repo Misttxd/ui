@@ -223,6 +223,45 @@ const [rezim, setRezim] = useState('prosty')
   vysvětlivku v `Tooltip`, co je mezi nimi za rozdíl.
 - jestli přepínač během načítání zakázat
 
+### JAK VYPADAJÍ TY ALTERNATIVY
+
+**`Switch`** je přepínač zapnuto/vypnuto, takže drží `true`/`false`, ne text:
+
+```tsx
+const [agentni, setAgentni] = useState(false)
+
+<Switch
+  checked={agentni}
+  onChange={(e) => setAgentni(e.currentTarget.checked)}
+  label="Agentní RAG"
+/>
+```
+
+Všimni si `checked` místo `value` a `e.currentTarget.checked` místo
+`e.target.value`. Do `predikuj` pak pošleš `agentni ? 'agentni' : 'prosty'`.
+
+**`Radio.Group`** vypadá jako klasické přepínače s kolečky:
+
+```tsx
+<Radio.Group value={rezim} onChange={setRezim} label="Režim">
+  <Stack gap="xs">
+    <Radio value="prosty" label="Klasický RAG" />
+    <Radio value="agentni" label="Agentní RAG" />
+  </Stack>
+</Radio.Group>
+```
+
+Importuješ jen `Radio`, `Radio.Group` je jeho součást. Hodí se, když chceš
+ke každé možnosti delší popisek.
+
+**`Tooltip`** je bublina, která vyskočí při najetí myší. Obalí se jím cokoliv:
+
+```tsx
+<Tooltip label="Agentní režim si sám formuluje víc dotazů a trvá déle">
+  <Text size="sm" c="dimmed">co to znamená?</Text>
+</Tooltip>
+```
+
 ### MUSÍ PLATIT
 
 - oba režimy volají různé endpointy
@@ -288,6 +327,41 @@ K dispozici máš `titulek`, `datum`, `label`, `zmena_pct`, `podobnost`, `jadro`
 - **řazení karet** — přijdou seřazené podle podobnosti; chceš to tak nechat?
 
 Napiš k `podobnost` vysvětlivku. Ty víš, co to je. Oponent ne.
+
+### JAK VYPADAJÍ TY ALTERNATIVY
+
+**`Paper`** je jen plocha s pozadím, bez oddílů:
+
+```tsx
+<Paper withBorder p="md" radius="md">
+  …obsah…
+</Paper>
+```
+
+**`RingProgress`** ukáže číslo jako kroužek:
+
+```tsx
+<RingProgress
+  size={80}
+  thickness={8}
+  sections={[{ value: udalost.podobnost * 100, color: 'blue' }]}
+  label={<Text ta="center" size="xs">{(udalost.podobnost * 100).toFixed(0)}%</Text>}
+/>
+```
+
+`sections` je pole, protože kroužek umí víc barevných výsečí. Tobě stačí jedna.
+
+**`Group`** dá prvky vedle sebe, `justify` je rozmístí:
+
+```tsx
+<Group justify="space-between">
+  <Text fw={700}>{udalost.titulek}</Text>
+  <Badge color="green">{udalost.label}</Badge>
+</Group>
+```
+
+`space-between` odtlačí prvky k okrajům, takže titulek bude vlevo a štítek
+vpravo. Další hodnoty jsou `center`, `flex-start`, `flex-end`.
 
 ### MUSÍ PLATIT
 
@@ -366,6 +440,34 @@ po jednom. Pro úkol M (graf u každé události) se hodí spíš `Accordion`.
 - jak vysoko `maxHeight`
 - jestli odkaz bude text, ikonka, nebo celý titulek klikací
 
+### JAK VYPADÁ TA ALTERNATIVA
+
+**`Accordion`** je skládací seznam. Na rozdíl od `Spoiler` se otevírá celá
+položka, a hodí se proto pro graf z úkolu M:
+
+```tsx
+<Accordion>
+  <Accordion.Item value={udalost.url}>
+    <Accordion.Control>{udalost.titulek}</Accordion.Control>
+    <Accordion.Panel>
+      …původní text, graf, cokoliv…
+    </Accordion.Panel>
+  </Accordion.Item>
+</Accordion>
+```
+
+`value` musí být u každé položky jiné — podle něj `Accordion` pozná, která je
+otevřená. Použij stejný klíč jako u `key`.
+
+Když chceš vědět, která položka je zrovna otevřená (třeba abys graf načetl až
+po rozkliknutí), přidej stav:
+
+```tsx
+const [otevrena, setOtevrena] = useState<string | null>(null)
+
+<Accordion value={otevrena} onChange={setOtevrena}>
+```
+
 ### MUSÍ PLATIT
 
 - u každé události vede odkaz na původní článek, otevírá se v nové záložce
@@ -404,6 +506,33 @@ reaguje jen na `null` a `undefined`.
   sobě
 - jestli ukážeš i `nalezeno` (kolik událostí dotaz našel)
 - jestli sekci schováš, nebo napíšeš, že v prostém režimu model dotazy netvoří
+
+### JAK VYPADAJÍ TY ALTERNATIVY
+
+**`List`** je obyčejný seznam s odrážkami:
+
+```tsx
+<List>
+  {dotazy.map((d) => (
+    <List.Item key={d.dotaz}>{d.dotaz} — nalezeno {d.nalezeno}</List.Item>
+  ))}
+</List>
+```
+
+**`Timeline`** ukáže, že dotazy šly po sobě. Tady chceš mít odškrtnuté všechny,
+takže `active` nastav na počet položek:
+
+```tsx
+<Timeline active={dotazy.length} bulletSize={18} lineWidth={2}>
+  {dotazy.map((d) => (
+    <Timeline.Item key={d.dotaz} title={d.dotaz}>
+      <Text size="xs" c="dimmed">nalezeno {d.nalezeno} událostí</Text>
+    </Timeline.Item>
+  ))}
+</Timeline>
+```
+
+`Timeline.Item` má `title` jako prop a zbytek jako obsah mezi značkami.
 
 ### MUSÍ PLATIT
 
@@ -971,6 +1100,21 @@ Math.floor(new Date('2022-04-01T18:12:00Z').getTime() / 1000)
 - **jestli přidat vodorovnou čáru s cenou v okamžiku publikace** —
   `rada.createPriceLine({ price, title: 'cena při publikaci' })`
 
+### JAK VYPADÁ TO ČEKÁNÍ NA DATA
+
+**`Skeleton`** je šedý obdélník na místě, kde teprve něco bude. Je klidnější
+než točící se kolečko, protože se stránka neposkakuje:
+
+```tsx
+{svicky === null ? <Skeleton height={220} /> : <div ref={misto} />}
+```
+
+**`Loader`** je kolečko, když ti stačí prostě naznačit, že se pracuje:
+
+```tsx
+<Loader size="sm" />
+```
+
 ### MUSÍ PLATIT
 
 - graf jde otevřít u každé nalezené události
@@ -1092,6 +1236,24 @@ Hotové kroky se vykreslí jinak než ty budoucí.
 - jestli seznam kroků ukážeš i před spuštěním — uživatel pak dopředu vidí, co
   systém dělá
 - jestli v agentním režimu ukážeš každý dotaz zvlášť, jak vzniká
+
+### JAK VYPADÁ TA ALTERNATIVA
+
+**`Stepper`** je totéž co `Timeline`, jen vodorovně a s čísly kroků:
+
+```tsx
+<Stepper active={cislo} size="sm">
+  <Stepper.Step label="Zestručňuji" />
+  <Stepper.Step label="Hledám v databázi" />
+  <Stepper.Step label="Ptám se modelu" />
+</Stepper>
+```
+
+`active` funguje stejně jako u `Timeline` — je to index, ne název fáze.
+
+Vodorovný `Stepper` se hodí, když máš málo kroků a chceš šetřit výšku.
+`Timeline` je lepší, když chceš u každého kroku napsat víc, třeba jak dlouho
+trval.
 
 ### MUSÍ PLATIT
 
