@@ -16,6 +16,9 @@ type DotazyModeluProps = {
   dotazy?: Dotaz[]
 }
 
+
+//aa
+
 // ÚKOL G1 — ošetři, že pole nemusí přijít
 //
 // Prop má taky otazník, takže uvnitř může být `undefined`. Použij `??`
