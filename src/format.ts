@@ -1,54 +1,25 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// ÚKOL E — formátování data a čísel
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// Syntaxe je v UKOLY_APLIKACE.md, úkol E. Sem si ji přepiš do funkcí, ať ji
-// nemusíš psát na každém místě znovu.
-//
-// Zatím tu funkce jen vracejí hodnotu tak, jak přišla — nic se neformátuje.
-// Tvoje práce je je dopsat.
+// Pomocné funkce na formátování. Jsou tady zvlášť, protože je potřebuje víc
+// komponent — kdyby byly v každé zvlášť, musel bys změnu dělat na víc místech.
 
-
-// ÚKOL E1 — datum
-//
-// Backend posílá "2022-04-01T18:12:00Z". Uživateli ukaž čitelné datum.
-// Rozmysli si, jestli chceš i čas — u 30minutového cíle je čas podstatný.
-//
-// TODO: převeď na Date a naformátuj přes toLocaleString nebo toLocaleDateString
+// Backend posílá datum jako "2022-04-01T18:12:00Z" (formát ISO).
+// new Date() z toho udělá objekt data, toLocaleString ho vypíše česky.
+// Čas necháváme, protože u 30minutového cíle je podstatný.
 export function formatujDatum(datum: string): string {
-  return datum
+  return new Date(datum).toLocaleString('cs-CZ')
 }
 
-
-// ÚKOL E2 — podobnost
-//
-// Backend posílá číslo 0 až 1, třeba 0.644.
-// Rozhodni se, jestli ukážeš "0,64" nebo "64 %". Procenta jsou čitelnější,
-// ale nejsou to procenta v pravém smyslu — je to kosinová podobnost. Když
-// zvolíš procenta, napiš to v rozhraní do vysvětlivky.
-//
-// TODO: zaokrouhli přes toFixed
+// Podobnost přijde jako číslo 0 až 1, třeba 0.644. Vynásobením stem
+// a zaokrouhlením z toho vyjde "64 %". toFixed(0) znamená nula desetinných míst.
 export function formatujPodobnost(podobnost: number): string {
-  return String(podobnost)
+  return (podobnost * 100).toFixed(0) + ' %'
 }
 
-
-// ÚKOL E3 — změna ceny
-//
-// Backend posílá procentní změnu, třeba 0.22 nebo -0.41.
-// Kladná změna by měla mít znaménko +, aby bylo na první pohled poznat,
-// kterým směrem se cena pohnula.
-//
-// TODO: zaokrouhli a u kladných čísel přidej "+"
+// Procentní změna ceny. U kladných čísel přidáváme +, aby byl směr vidět
+// na první pohled; minus si JavaScript doplní sám.
 export function formatujZmenu(zmena_pct: number): string {
-  return String(zmena_pct)
+  return (zmena_pct > 0 ? '+' : '') + zmena_pct.toFixed(2) + ' %'
 }
 
-
-// ÚKOL E4 — barva podle třídy
-//
-// Používá se na Badge u predikce i u každé události. Drž ji jednotnou
-// v celé aplikaci: down červená, neutral šedá, up zelená.
-//
-// Tenhle jeden ti dám hotový, protože ho budeš potřebovat hned v úkolu D.
+// Barvy tříd. Drží se jednotné v celé aplikaci, aby červená vždycky znamenala
+// pokles. Používá se u predikce i u každé historické události.
 export const BARVY_TRID = { down: 'red', neutral: 'gray', up: 'green' }

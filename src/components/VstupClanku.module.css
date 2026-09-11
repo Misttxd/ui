@@ -1,0 +1,38 @@
+.vstup {
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+}
+
+.vstup[data-pretahuje] {
+  outline: 2px dashed var(--mantine-color-text);
+  outline-offset: 3px;
+}
+
+.editor {
+  margin-top: var(--mantine-spacing-xs);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.65;
+}
+
+.zdroj {
+  padding-inline: var(--mantine-spacing-sm);
+  min-height: 44px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.nazev {
+  flex: 1;
+  min-width: 0;
+}
+
+.odeslat {
+  min-height: 44px;
+}
+
+@media (max-width: 36em) {
+  .ovladani { align-items: stretch; }
+  .rezim, .odeslat { width: 100%; }
+}
