@@ -7,6 +7,7 @@ type Zpracovani = {
   zdroj: ZdrojClanku
   rezim: Rezim
   potvrzeno: boolean
+  minimum: number
   textVstupu?: string
   prubeh: PrubehZpracovani
 }
@@ -26,6 +27,7 @@ export default function useZpracovani() {
   async function spust(
     zdroj: ZdrojClanku,
     rezim: Rezim,
+    minimum = 50,
     potvrzeno = false,
     textVstupu?: string,
   ) {
@@ -33,7 +35,7 @@ export default function useZpracovani() {
     const controller = new AbortController()
     pozadavek.current = controller
 
-    const zadani = { zdroj, rezim, potvrzeno, textVstupu }
+    const zadani = { zdroj, rezim, minimum, potvrzeno, textVstupu }
 
     setZpracovani({ ...zadani, prubeh: {
       faze: 'vstup', hotove: [], zprava: 'Předávám článek ke zpracování.',
@@ -44,7 +46,7 @@ export default function useZpracovani() {
         ? { text: textVstupu }
         : zdroj.typ === 'odkaz' ? { url: zdroj.url } : { text: zdroj.text }
 
-      await predikujPrubezne({ ...vstup, rezim, pokracovat_i_tak: potvrzeno }, (prubeh) => {
+      await predikujPrubezne({ ...vstup, rezim, min_podobnost: minimum, pokracovat_i_tak: potvrzeno }, (prubeh) => {
         if (controller.signal.aborted || pozadavek.current !== controller) return
         setZpracovani({ ...zadani, prubeh })
       }, controller.signal)
@@ -65,13 +67,13 @@ export default function useZpracovani() {
 
   function opakovat() {
     if (zpracovani) void spust(
-      zpracovani.zdroj, zpracovani.rezim, zpracovani.potvrzeno, zpracovani.textVstupu,
+      zpracovani.zdroj, zpracovani.rezim, zpracovani.minimum, zpracovani.potvrzeno, zpracovani.textVstupu,
     )
   }
 
   function pokracovat() {
     if (zpracovani?.prubeh.faze !== 'varovani' || !zpracovani.prubeh.text_vstupu) return
-    void spust(zpracovani.zdroj, zpracovani.rezim, true, zpracovani.prubeh.text_vstupu)
+    void spust(zpracovani.zdroj, zpracovani.rezim, zpracovani.minimum, true, zpracovani.prubeh.text_vstupu)
   }
 
   return { zpracovani, spust, zpet, opakovat, pokracovat }

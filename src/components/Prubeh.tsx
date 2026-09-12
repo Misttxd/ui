@@ -1,8 +1,7 @@
-import { useId, useState } from 'react'
-import { Button, Group, Stack, Text, Title } from '@mantine/core'
+import { useId } from 'react'
+import { Button, Group, Progress, Stack, Text, Title } from '@mantine/core'
 import { KROKY, type PrubehZpracovani } from '../prubeh'
 import styles from './Prubeh.module.css'
-import GrafBTC from './GrafBTC'
 import { procenta } from '../ceny'
 
 type PrubehProps = {
@@ -14,19 +13,8 @@ type PrubehProps = {
 
 const SMERY = { up: 'Růst', down: 'Pokles', neutral: 'Neutrální' }
 
-function bezpecnyOdkaz(hodnota: string) {
-  try {
-    const url = new URL(hodnota)
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined
-  } catch {
-    return undefined
-  }
-}
-
 export default function Prubeh({ prubeh, onUpravit, onPokracovat, onOpakovat }: PrubehProps) {
   const nadpisId = useId()
-  const [vybrana, setVybrana] = useState<string | null>(null)
-  const historicka = prubeh.podobne?.find((u) => u.datum + u.url === vybrana)
   const { faze, vysledek } = prubeh
   const hotovo = faze === 'hotovo'
   const problem = faze === 'chyba' || faze === 'varovani'
@@ -83,6 +71,12 @@ export default function Prubeh({ prubeh, onUpravit, onPokracovat, onOpakovat }: 
             <Text size="xs" c="dimmed">Odhad reakce BTC · 30 minut po zprávě</Text>
             <Text size="xl" fw={600} mt={4}>{vysledek.predikce ? SMERY[vysledek.predikce] : 'Model nevrátil platnou predikci'}</Text>
             {vysledek.zmena_pct !== undefined && <Text size="sm">{procenta(vysledek.zmena_pct)} za 30 minut</Text>}
+            {vysledek.opora_pct !== undefined && <Stack gap={6} mt="md">
+              <Group justify="space-between"><Text size="sm">Historická opora</Text><Text size="sm" fw={600}>{vysledek.opora_pct.toLocaleString('cs-CZ')} %</Text></Group>
+              <Progress value={vysledek.opora_pct} color={vysledek.opora_pct < 100 / 3 ? 'red' : vysledek.opora_pct < 200 / 3 ? 'orange' : 'green'} aria-label="Historická opora" />
+              <Text size="xs" c="dimmed">{vysledek.podobne.length === 0 ? 'Bez historických podkladů. Model vychází pouze z článku a obecných znalostí.' : `${vysledek.podobne.length} podkladů · minimální podobnost ${vysledek.min_podobnost} %`}</Text>
+              <Text size="xs" c="dimmed" title="Skóre kombinuje průměrnou podobnost, počet různých událostí a shodu historických směrů. Nejde o měřenou úspěšnost predikce.">Orientační skóre podkladů, nikoli pravděpodobnost správné predikce.</Text>
+            </Stack>}
           </div>
         )}
 
@@ -92,23 +86,6 @@ export default function Prubeh({ prubeh, onUpravit, onPokracovat, onOpakovat }: 
               <details className={styles.detail}>
                 <summary>Zestručněný článek</summary>
                 <Text size="sm" className={styles.text}>{prubeh.jadro}</Text>
-              </details>
-            )}
-            {prubeh.podobne && (
-              <details className={styles.detail} onToggle={(event) => { if (!event.currentTarget.open) setVybrana(null) }}>
-                <summary>Historické podklady <span className={styles.pocet}>{prubeh.podobne.length}</span></summary>
-                {prubeh.podobne.length === 0 ? <Text size="sm" c="dimmed">Žádné podobné události se nepodařilo najít.</Text> : (
-                  <ul className={styles.udalosti}>
-                    {prubeh.podobne.map((udalost, index) => (
-                      <li key={index}>
-                        {bezpecnyOdkaz(udalost.url) ? <a href={bezpecnyOdkaz(udalost.url)} target="_blank" rel="noreferrer">{udalost.titulek}</a> : <Text size="sm" fw={500}>{udalost.titulek}</Text>}
-                        <Text size="xs" c="dimmed" mt={4}>{udalost.zdroj} · BTC {udalost.zmena_pct > 0 ? '+' : ''}{udalost.zmena_pct.toLocaleString('cs-CZ', { maximumFractionDigits: 2 })} % za 30 min</Text>
-                        <Button size="compact-xs" variant="subtle" mt="xs" aria-expanded={vybrana === udalost.datum + udalost.url} onClick={() => setVybrana(vybrana === udalost.datum + udalost.url ? null : udalost.datum + udalost.url)}>{vybrana === udalost.datum + udalost.url ? 'Skrýt graf' : 'Zobrazit v grafu'}</Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {historicka && <GrafBTC key={vybrana} datum={historicka.datum} titulek={historicka.titulek} skutecnaZmena={historicka.zmena_pct} />}
               </details>
             )}
             {!!vysledek?.dotazy_modelu?.length && (

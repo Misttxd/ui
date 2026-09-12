@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react'
 import { Badge, Box, Button, CloseButton, FileButton, Group, SegmentedControl, Stack, Text, Textarea } from '@mantine/core'
+import PrahPodobnosti from './PrahPodobnosti'
 import { POVOLENE_SOUBORY, type Rezim, type ZdrojClanku } from '../zdrojClanku'
 import useVstupClanku from './useVstupClanku'
 import styles from './VstupClanku.module.css'
@@ -7,7 +8,7 @@ import styles from './VstupClanku.module.css'
 export type { Rezim } from '../zdrojClanku'
 
 type VstupClankuProps = {
-  onOdeslat: (zdroj: ZdrojClanku, rezim: Rezim) => void
+  onOdeslat: (zdroj: ZdrojClanku, rezim: Rezim, minimum: number) => void
   nacita: boolean
   onZmena?: () => void
 }
@@ -15,6 +16,7 @@ type VstupClankuProps = {
 export default function VstupClanku({ onOdeslat, nacita, onZmena }: VstupClankuProps) {
   const { editor, resetVyberu, ...vstup } = useVstupClanku(nacita, onZmena)
   const [rezim, setRezim] = useState<Rezim>('prosty')
+  const [minimum, setMinimum] = useState(50)
   const [pretahuje, setPretahuje] = useState(false)
   const hloubkaPretazeni = useRef(0)
 
@@ -29,7 +31,7 @@ export default function VstupClanku({ onOdeslat, nacita, onZmena }: VstupClankuP
       event.preventDefault()
       const zdroj = vstup.zdroj()
       if (zdroj) {
-        onOdeslat(zdroj, rezim)
+        onOdeslat(zdroj, rezim, minimum)
       }
     }}>
       <Stack gap="md">
@@ -102,6 +104,7 @@ export default function VstupClanku({ onOdeslat, nacita, onZmena }: VstupClankuP
           </Stack>
         </Box>
 
+        <PrahPodobnosti value={minimum} disabled={vstup.zamceno} onChange={(value) => { setMinimum(value); onZmena?.() }} />
         <Group justify="space-between" align="flex-end" className={styles.ovladani}>
           <Stack gap={6} className={styles.rezim}>
             <Text size="sm" fw={500}>Režim vyhledávání</Text>

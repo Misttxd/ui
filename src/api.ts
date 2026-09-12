@@ -18,6 +18,8 @@ export type Dotaz = {
 }
 
 export type Odpoved = {
+  opora_pct?: number
+  min_podobnost?: number
   zmena_pct?: number
   rezim: 'agentni_rag' | 'prosty_rag'
   predikce: 'up' | 'down' | 'neutral' | null
@@ -44,6 +46,7 @@ function jeOdpoved(data: unknown): data is Odpoved {
     && (d.predikce === null || ['up', 'down', 'neutral'].includes(String(d.predikce)))
     && typeof d.surova_odpoved === 'string' && typeof d.jadro_dotazu === 'string'
     && typeof d.je_zprava === 'boolean'
+    && ['opora_pct', 'min_podobnost'].every((k) => d[k] === undefined || (typeof d[k] === 'number' && Number.isFinite(d[k]) && d[k] >= 0 && d[k] <= 100))
     && (d.zmena_pct === undefined || (typeof d.zmena_pct === 'number' && Number.isFinite(d.zmena_pct) && d.zmena_pct > -100 && d.zmena_pct <= 100))
     && Array.isArray(d.podobne) && d.podobne.every(jeUdalost)
     && (d.dotazy_modelu === undefined || (Array.isArray(d.dotazy_modelu)
@@ -51,6 +54,7 @@ function jeOdpoved(data: unknown): data is Odpoved {
 }
 
 type StreamDotaz = ({ text: string; url?: never } | { url: string; text?: never }) & {
+  min_podobnost?: number
   rezim: 'prosty' | 'agentni'
   pokracovat_i_tak: boolean
 }

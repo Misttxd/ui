@@ -87,6 +87,8 @@ test('odmítne neplatné stavy, chybějící výsledek a varování bez původn�
     { ...varovani, text_vstupu: '' }, { ...varovani, text_vstupu: undefined },
     { ...podklady, podobne: [{ titulek: 'Neúplný záznam' }] },
     { ...podklady, jadro: {} },
+    { ...hotovo, vysledek: { ...hotovo.vysledek, opora_pct: 101 } },
+    { ...hotovo, vysledek: { ...hotovo.vysledek, min_podobnost: -1 } },
   ]
   for (const data of neplatne) {
     await assert.rejects(ctiPrubeh(streamText(zaznamy(data)), () => {}), /neplatný stav/)
@@ -116,7 +118,7 @@ test('po zrušení nepředá zbývající zprávy již načteného bloku', async
 
 test('streamovací požadavek odešle odkaz, režim a potvrzení a předá výsledek', async (t) => {
   const signal = new AbortController().signal
-  const dotaz = { url: 'https://example.com/clanek', rezim: 'agentni', pokracovat_i_tak: false }
+  const dotaz = { url: 'https://example.com/clanek', rezim: 'agentni', min_podobnost: 72, pokracovat_i_tak: false }
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, '/api/predict/stream')
     assert.equal(options.method, 'POST')
