@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { prectiSoubor, rozpoznejOdkaz, type PrilozenySoubor, type ZdrojClanku } from '../zdrojClanku'
 
-export default function useVstupClanku(nacita: boolean) {
+export default function useVstupClanku(nacita: boolean, onZmena?: () => void) {
   const [text, setText] = useState('')
   const [soubor, setSoubor] = useState<PrilozenySoubor | null>(null)
   const [cteSoubor, setCteSoubor] = useState(false)
   const [chyba, setChyba] = useState<string | null>(null)
-  const [pripraveno, setPripraveno] = useState(false)
   const poradiCteni = useRef(0)
   const resetVyberu = useRef<() => void>(null)
   const editor = useRef<HTMLTextAreaElement>(null)
@@ -20,14 +19,13 @@ export default function useVstupClanku(nacita: boolean) {
     if (soubor) setSoubor({ ...soubor, text: hodnota })
     else setText(hodnota)
     setChyba(null)
-    setPripraveno(false)
+    onZmena?.()
   }
 
   async function nactiSoubory(soubory: File[]) {
     if (zamceno || soubory.length === 0) return
     resetVyberu.current?.()
     setChyba(null)
-    setPripraveno(false)
     if (soubory.length !== 1) {
       setChyba('Vlož jeden článek najednou. Vyber prosím jen jeden soubor.')
       return
@@ -36,7 +34,10 @@ export default function useVstupClanku(nacita: boolean) {
     setCteSoubor(true)
     try {
       const nacteny = await prectiSoubor(soubory[0])
-      if (poradi === poradiCteni.current) setSoubor(nacteny)
+      if (poradi === poradiCteni.current) {
+        setSoubor(nacteny)
+        onZmena?.()
+      }
     } catch (potiz) {
       if (poradi === poradiCteni.current) {
         setChyba(potiz instanceof Error ? potiz.message : 'Soubor se nepodařilo přečíst.')
@@ -49,7 +50,7 @@ export default function useVstupClanku(nacita: boolean) {
   function odeberSoubor() {
     setSoubor(null)
     setChyba(null)
-    setPripraveno(false)
+    onZmena?.()
     resetVyberu.current?.()
     editor.current?.focus()
   }
@@ -63,7 +64,7 @@ export default function useVstupClanku(nacita: boolean) {
 
   return {
     obsah, soubor, cteSoubor, chyba: chyba ?? odkaz.chyba, odkaz: odkaz.url,
-    zamceno, editor, resetVyberu, pripraveno,
-    zmenText, nactiSoubory, odeberSoubor, zdroj, setPripraveno,
+    zamceno, editor, resetVyberu,
+    zmenText, nactiSoubory, odeberSoubor, zdroj,
   }
 }

@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { Alert, Badge, Box, Button, CloseButton, FileButton, Group, SegmentedControl, Stack, Text, Textarea } from '@mantine/core'
+import { Badge, Box, Button, CloseButton, FileButton, Group, SegmentedControl, Stack, Text, Textarea } from '@mantine/core'
 import { POVOLENE_SOUBORY, type Rezim, type ZdrojClanku } from '../zdrojClanku'
 import useVstupClanku from './useVstupClanku'
 import styles from './VstupClanku.module.css'
@@ -9,10 +9,11 @@ export type { Rezim } from '../zdrojClanku'
 type VstupClankuProps = {
   onOdeslat: (zdroj: ZdrojClanku, rezim: Rezim) => void
   nacita: boolean
+  onZmena?: () => void
 }
 
-export default function VstupClanku({ onOdeslat, nacita }: VstupClankuProps) {
-  const { editor, resetVyberu, ...vstup } = useVstupClanku(nacita)
+export default function VstupClanku({ onOdeslat, nacita, onZmena }: VstupClankuProps) {
+  const { editor, resetVyberu, ...vstup } = useVstupClanku(nacita, onZmena)
   const [rezim, setRezim] = useState<Rezim>('prosty')
   const [pretahuje, setPretahuje] = useState(false)
   const hloubkaPretazeni = useRef(0)
@@ -29,7 +30,6 @@ export default function VstupClanku({ onOdeslat, nacita }: VstupClankuProps) {
       const zdroj = vstup.zdroj()
       if (zdroj) {
         onOdeslat(zdroj, rezim)
-        vstup.setPripraveno(true)
       }
     }}>
       <Stack gap="md">
@@ -66,8 +66,9 @@ export default function VstupClanku({ onOdeslat, nacita }: VstupClankuProps) {
               value={vstup.obsah}
               onChange={(event) => vstup.zmenText(event.currentTarget.value)}
               placeholder="Text článku nebo https://…"
-              autosize minRows={8} maxRows={18}
-              disabled={vstup.zamceno}
+              autosize minRows={6} maxRows={14}
+              readOnly={nacita}
+              disabled={vstup.cteSoubor}
               error={vstup.chyba || undefined}
               classNames={{ input: styles.editor }}
             />
@@ -96,7 +97,7 @@ export default function VstupClanku({ onOdeslat, nacita }: VstupClankuProps) {
               <Text size="xs" c="dimmed">{vstup.odkaz ? 'Webový zdroj' : `${vstup.obsah.length.toLocaleString('cs-CZ')} znaků`}</Text>
             </Group>
             <Text size="xs" c="dimmed" role="status">
-              {pretahuje && !vstup.zamceno ? 'Pusť sem jeden soubor s článkem.' : 'TXT nebo Markdown · do 2 MB · načtení souboru probíhá v prohlížeči'}
+              {pretahuje && !vstup.zamceno ? 'Pusť sem jeden soubor s článkem.' : 'TXT nebo Markdown · do 2 MB'}
             </Text>
           </Stack>
         </Box>
@@ -104,23 +105,16 @@ export default function VstupClanku({ onOdeslat, nacita }: VstupClankuProps) {
         <Group justify="space-between" align="flex-end" className={styles.ovladani}>
           <Stack gap={6} className={styles.rezim}>
             <Text size="sm" fw={500}>Režim vyhledávání</Text>
-            <SegmentedControl value={rezim} onChange={(hodnota) => { setRezim(hodnota as Rezim); vstup.setPripraveno(false) }} disabled={vstup.zamceno} aria-label="Režim vyhledávání" data={[
+            <SegmentedControl value={rezim} onChange={(hodnota) => { setRezim(hodnota as Rezim); onZmena?.() }} disabled={vstup.zamceno} aria-label="Režim vyhledávání" data={[
               { label: 'Klasický RAG', value: 'prosty' },
               { label: 'Agentní RAG', value: 'agentni' },
             ]} />
           </Stack>
-          <Button type="submit" color="dark" loading={nacita} disabled={!vstup.zdroj()} className={styles.odeslat}>
-            {vstup.odkaz ? 'Použít odkaz' : 'Použít článek'}
+          <Button type="submit" color="dark" disabled={!vstup.zdroj()} className={styles.odeslat}>
+            {nacita ? 'Zpracovávám…' : 'Zpracovat článek'}
           </Button>
         </Group>
 
-        {vstup.pripraveno && (
-          <Alert color="gray" title={vstup.odkaz ? 'Odkaz je připravený' : 'Článek je připravený'} role="status">
-            {vstup.odkaz
-              ? 'Načtení textu z webu a předpověď připojíme v dalším kroku.'
-              : 'Vstup je připravený pro zpracování. Předpověď zatím není připojená.'}
-          </Alert>
-        )}
       </Stack>
     </form>
   )
